@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Web Security Scanner - Flask UI.  Local: python3 app.py   Cloud: gunicorn app:app"""
+"""Web Security Scanner - Flask UI. Local: python3 app.py   Cloud: gunicorn app:app"""
 import os, time
 from collections import defaultdict, deque
 
@@ -7,7 +7,12 @@ from flask import Flask, jsonify, render_template, request
 
 from web_scanner import MODES, run_scan
 
-app = Flask(__name__)
+# Templates qovluğunun dəqiq yolunu təyin edirik
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+
 HITS = defaultdict(deque)
 RATE_LIMIT, WINDOW = 6, 60          # scans per IP per minute
 
@@ -68,5 +73,6 @@ def health():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"Starting at http://127.0.0.1:{port}  (Ctrl+C to stop)")
-    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=port, debug=False)
+    host = os.environ.get("HOST", "0.0.0.0")
+    print(f"Starting at http://{host}:{port}  (Ctrl+C to stop)")
+    app.run(host=host, port=port, debug=False)
