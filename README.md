@@ -1,37 +1,31 @@
 # Web Security Scanner
 
-Authorized testing only.
+Passive and active external reconnaissance scanner written in Python. Assesses a web target's security posture including open ports, TLS/SSL configuration, HTTP security headers, and common exposed sensitive files.
 
-## Folder structure (keep exactly like this)
-```
-web_scanner/
-├── app.py              Flask web UI + /api/scan + /health
-├── web_scanner.py      scan engine (modes, checks, scoring)
-├── ui_scanner.py       optional terminal UI
-├── requirements.txt
-├── render.yaml         Render deploy config
-├── .gitignore
-└── templates/
-    └── index.html      MUST be inside templates/
-```
+Includes both a CLI tool, a Rich terminal interface, and a Flask web UI.
 
-## Run locally
-```
-pip install -r requirements.txt
-python app.py            # http://127.0.0.1:5000
-python web_scanner.py example.com --mode broad --output report.json
-```
+---
 
-## Scan modes
-| Mode | Adds |
-|---|---|
-| light | TLS, core headers, banner |
-| medium | + 13 ports, 10 sensitive files |
-| broad | + 30 ports, 32 files, cookies, HTTP→HTTPS, legacy TLS, robots/security.txt |
-| extended | + 53 ports, 59 files, CORS, TRACE/OPTIONS, dir listing, fingerprinting |
+## Features
 
-## Deploy on Render
-1. Push this folder to a GitHub repo (files at repo root).
-2. Render → New → Blueprint (uses render.yaml) or New Web Service:
-   Build `pip install -r requirements.txt`, Start `gunicorn app:app --workers 2 --threads 4 --timeout 120`.
-3. Env var `SCANNER_BLOCK_PRIVATE=1` stops visitors scanning internal IPs (already in render.yaml).
+- **Port Scanning**: Multi-threaded check for common service ports (FTP, SSH, RDP, MySQL, Postgres, HTTP/S, etc.).
+- **TLS Inspection**: Validates SSL/TLS certificate validity, issuer, expiration, and detects weak/legacy protocols (TLS 1.0/1.1).
+- **Security Headers Check**: Audits missing headers (`HSTS`, `CSP`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, etc.) with explanation of risks.
+- **Exposed Sensitive Paths**: Probes for sensitive endpoints (`/.git/config`, `/.env`, `/admin/`, `/phpinfo.php`, etc.).
+- **SPA False-Positive Mitigation**: Uses baseline response comparison (differential testing) against catch-all client-side routes (e.g. React/Angular apps returning `200 OK` for every path) to filter out fake findings.
+- **Risk Score Calculation**: Aggregates findings into a weighted score (0–100) with severity tiers (MINIMAL, LOW, MEDIUM, HIGH).
+
+---
+
+## Project Structure
+
+```text
+web_security_scanner/
+├── web_scanner.py      # Core scanning logic & CLI implementation
+├── app.py              # Flask backend server for Web UI
+├── ui_scanner.py       # Rich terminal UI interface
+├── templates/
+│   └── index.html      # Single-page Web Dashboard
+├── requirements.txt    # Project dependencies
+├── render.yaml         # Cloud deployment configuration
+└── README.md
