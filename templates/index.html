@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Security Scanner</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=2) }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">⌁</span><span>WEB SCANNER</span></div>
+  <div class="top-meta"><span class="led"></span><span>Scanner online</span><span aria-hidden="true">/</span><span>Authorized testing only</span></div>
+</header>
+<main>
+  <section class="heading">
+    <div><p class="eyebrow">Application security / surface analysis</p><h1>Web security scanner</h1><p class="lede">Assess exposed services, transport security, headers, and common application paths. Findings include evidence and recommended remediation.</p></div>
+    <div class="scope-note">SCANS ARE LIMITED TO YOUR AUTHORIZED SCOPE</div>
+  </section>
+
+  <form method="post" id="f">
+    <section class="console" aria-labelledby="scan-setup">
+      <div class="section-kicker" id="scan-setup"><span>New assessment</span><span class="step">01 / TARGET &amp; DEPTH</span></div>
+      <div class="target-row"><span class="prompt" aria-hidden="true">&gt;_</span><input type="text" name="target" value="{{ target }}" placeholder="https://example.com or 127.0.0.1:8000" required autofocus maxlength="253" aria-label="Target URL or hostname"><button class="primary-btn" id="runbtn" type="submit"><span>RUN SCAN</span><span aria-hidden="true">↗</span></button></div>
+      <p class="mode-heading">Select scan profile</p>
+      <div class="modes">
+        {% for key, m in modes.items() %}
+        <div class="mode"><input type="radio" name="mode" id="m-{{ key }}" value="{{ key }}" data-eta="{{ m.eta }}" {{ 'checked' if key == mode }}><label class="mode-card" for="m-{{ key }}"><span class="mode-top"><span class="mode-name"><span class="mode-indicator"></span>{{ m.label }}</span><span class="eta">{{ m.eta }}</span></span><span class="mode-desc">{{ m.desc }}</span></label></div>
+        {% endfor %}
+      </div>
+      <div class="auth-row"><label class="auth" id="consent-label"><input type="checkbox" name="authorized" id="consent" aria-describedby="consent-error"><span>I own this target or have explicit permission to test it.</span></label><span class="consent-error" id="consent-error" role="alert" hidden>Permission required before scanning</span></div>
+    </section>
+  </form>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  {% if error %}<p class="warn" role="alert">{{ error }}</p>{% endif %}
+
+  <section class="activity" id="scan-activity" aria-labelledby="activity-title" aria-live="polite" data-state="{{ 'complete' if results else 'idle' }}" {% if not results %}hidden{% endif %}>
+    <div class="activity-header"><div><p class="activity-kicker">Request lifecycle</p><h2 id="activity-title">{% if results %}Scan activity{% else %}Scan in progress{% endif %}</h2></div><span class="activity-state"><span class="activity-led"></span><span id="activity-state-text">{{ 'COMPLETE' if results else 'IDLE' }}</span></span></div>
+    <div class="progress-track" role="progressbar" aria-label="Scan request progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ 100 if results else 0 }}"><span class="progress-bar"></span></div>
+    <ol class="activity-log" id="activity-log">
+      {% if results %}
+      <li class="log-line"><span class="log-mark">[OK]</span><span>Scan response received from server.</span></li>
+      <li class="log-line"><span class="log-mark">[OK]</span><span>{{ results.mode_label }} profile completed in {{ results.duration_s }}s.</span></li>
+      <li class="log-line"><span class="log-mark">[OK]</span><span>{{ results.findings|length }} findings included in the report.</span></li>
+      {% endif %}
+    </ol>
+  </section>
+
+  {% if results %}
+  {% set gc = 'var(--green)' if results.risk_label in ['MINIMAL','LOW'] else ('var(--amber)' if results.risk_label == 'MEDIUM' else 'var(--red)') %}
+  {% set circ = 251.33 %}
+  <section class="report" aria-labelledby="report-title">
+    <div class="report-heading"><div><p class="report-kicker">Assessment complete / {{ results.scanned_at[:10] }}</p><h2 id="report-title">Scan results</h2></div><div class="exports"><button class="export-btn" type="button" id="copy-summary"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="10" rx="1"/><path d="M11 5V2H2v10h3"/></svg>Copy summary</button><button class="export-btn" type="button" id="export-json"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M3 11v2h10v-2"/></svg>Export JSON</button><button class="export-btn" type="button" id="print-report"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 5V2h8v3M4 11H2V6h12v5h-2M4 9h8v5H4z"/></svg>Print / PDF</button></div></div>
+    <div class="score-panel" style="--gc:{{ gc }}">
+      <svg class="gauge" viewBox="0 0 100 100" role="img" aria-label="Risk score {{ results.risk_score }} out of 100">
+        <circle class="gauge-track" cx="50" cy="50" r="40" fill="none"/>
+        <circle class="gauge-value" cx="50" cy="50" r="40" fill="none" stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ circ }}" data-score="{{ results.risk_score }}" transform="rotate(-90 50 50)"/>
+        <text x="50" y="48" text-anchor="middle" class="gauge-num" data-score-value="{{ results.risk_score }}">0</text><text x="50" y="61" text-anchor="middle" class="gauge-unit">/ 100</text>
+      </svg>
+      <div class="score-content"><div class="target">{{ results.target }}</div><div class="meta-line"><span class="meta-item"><span class="meta-label">Risk</span><span class="risk-pill" style="--gc:{{ gc }}">{{ results.risk_label }}</span></span><span class="meta-item"><span class="meta-label">Profile</span>{{ results.mode_label }}</span><span class="meta-item"><span class="meta-label">Duration</span>{{ results.duration_s }}s</span></div><div class="summary-counts">
+        {% for s in ['critical','high','medium','low','info'] %}{% if results.summary.get(s, 0) %}<span class="count-chip sev-{{ s }}"><strong>{{ results.summary[s] }}</strong>{{ s }}</span>{% endif %}{% endfor %}
+        {% if not results.findings %}<span class="count-chip sev-info"><strong>0</strong>findings</span>{% endif %}
+      </div></div>
+    </div>
+    <p class="score-note">Risk score reflects findings from this scan profile only. It is a prioritization signal, not a guarantee of security.</p>
+
+    <div class="tabs-wrap"><nav class="tabs" aria-label="Filter findings by category"><button type="button" class="tab on" data-cat="all" aria-pressed="true">All<span class="tab-count">{{ results.findings|length }}</span></button>{% for c in results.categories %}<button type="button" class="tab" data-cat="{{ c.id }}" aria-pressed="false">{{ c.name }}<span class="tab-count">{{ c.count }}</span></button>{% endfor %}</nav></div>
+    <div class="finding-list" id="list">
+      {% for x in results.findings %}
+      <details class="finding sev-{{ x.severity }}" data-cat="{{ x.category }}"><summary><span class="sev-badge">{{ x.severity|upper }}</span><span class="finding-title">{{ x.title }}</span></summary><div class="finding-content">{% if x.detail %}<p class="evidence-label">Detected evidence / context</p><p class="evidence">{{ x.detail }}</p>{% endif %}{% if x.fix %}<p class="fix-label">Recommended remediation</p><div class="fix-block">{{ x.fix }}</div>{% endif %}</div></details>
+      {% endfor %}
+      <p class="empty" id="none" {% if results.findings %}hidden{% endif %}>No findings in this category for the selected scan profile.</p>
+    </div>
+
+    <details class="scan-details"><summary>Scan telemetry and configuration</summary><div class="details-grid"><div class="detail-cell"><span class="detail-label">Open ports</span><span class="detail-value">{% if results.open_ports %}{% for p in results.open_ports %}{{ p.port }}/{{ p.service }}{{ ', ' if not loop.last }}{% endfor %}{% else %}None found / not checked{% endif %}</span></div><div class="detail-cell"><span class="detail-label">TLS protocol</span><span class="detail-value">{% if results.tls.reachable and results.tls.protocol %}{{ results.tls.protocol }} · {{ results.tls.issuer }}{% elif results.tls.error %}{{ results.tls.error }}{% else %}Not available{% endif %}</span></div><div class="detail-cell"><span class="detail-label">Certificate expiry</span><span class="detail-value">{% if results.tls.expires %}{{ results.tls.expires }} · {{ results.tls.days_until_expiry }} days{% else %}Not available{% endif %}</span></div><div class="detail-cell"><span class="detail-label">Headers present</span><span class="detail-value">{% if results.headers.present %}{{ results.headers.present.keys()|join(', ') }}{% else %}None reported{% endif %}</span></div><div class="detail-cell"><span class="detail-label">HTTP status</span><span class="detail-value">{{ results.headers.get('status_code', 'Unavailable') }}</span></div>{% if results.mode == 'deep' %}<div class="detail-cell"><span class="detail-label">Same-origin pages crawled</span><span class="detail-value">{{ results.crawled_pages }}</span></div>{% endif %}</div></details>
+    <script id="rd" type="application/json">{{ results|tojson }}</script>
+  </section>
+  {% endif %}
+</main>
+<script src="{{ url_for('static', filename='js/main.js', v=2) }}" defer></script>
+</body>
+</html>
